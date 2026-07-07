@@ -1,0 +1,101 @@
+{
+  "theme": "Light",
+  "archetype": "3 (Pastel & Soft) mixed with Neo-Brutalist contrast",
+  "domain": "Education / Youth Productivity App",
+  "colors": {
+    "background": "#FDFBF7",
+    "surface": "#FFFFFF",
+    "primary": "#FF7B54",
+    "secondary": "#FFD166",
+    "accent": "#A0C4FF",
+    "text_primary": "#0A0A0A",
+    "text_secondary": "#4A4A4A",
+    "border": "#0A0A0A",
+    "success": "#2ECC71",
+    "error": "#FF3B30",
+    "warning": "#FFD166"
+  },
+  "typography": {
+    "heading_font": "Cabinet Grotesk, sans-serif",
+    "body_font": "Figtree, sans-serif",
+    "import_url": "@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap'); @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,500,700,900&display=swap');",
+    "heading_scale": {
+      "h1": "text-5xl md:text-6xl tracking-tight font-black",
+      "h2": "text-4xl md:text-5xl tracking-tight font-bold",
+      "h3": "text-2xl md:text-3xl tracking-tight font-bold",
+      "h4": "text-xl md:text-2xl tracking-tight font-bold"
+    },
+    "body_scale": {
+      "base": "text-base leading-relaxed font-medium",
+      "sm": "text-sm leading-relaxed",
+      "label": "text-xs font-bold uppercase tracking-[0.2em]"
+    }
+  },
+  "spacing_and_layout": {
+    "container_padding": "px-6 md:px-12",
+    "section_gap": "gap-16 md:gap-32",
+    "grid_strategy": "Mode A (Tetris Grid) for landing page (asymmetric bento boxes), Mode B (Control Room Grid) for Student Dashboard (dense, F-pattern data architecture).",
+    "mobile_constraints": "Images must not exceed 80vh. Use max-h-[80vh] md:max-h-none."
+  },
+  "surfaces": {
+    "cards": "bg-white border-2 border-[#0A0A0A] rounded-xl shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]",
+    "cards_hover": "hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(10,10,10,1)] transition-all",
+    "buttons_primary": "bg-[#FF7B54] text-[#0A0A0A] font-bold border-2 border-[#0A0A0A] rounded-xl shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(10,10,10,1)] active:translate-y-1 active:translate-x-1 active:shadow-none transition-all px-6 py-3",
+    "buttons_secondary": "bg-[#FFD166] text-[#0A0A0A] font-bold border-2 border-[#0A0A0A] rounded-xl shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_rgba(10,10,10,1)] active:translate-y-1 active:translate-x-1 active:shadow-none transition-all px-6 py-3",
+    "inputs": "bg-white border-2 border-[#0A0A0A] rounded-xl px-4 py-3 focus:outline-none focus:ring-0 focus:border-[#FF7B54] shadow-[inset_0px_2px_4px_rgba(0,0,0,0.05)] text-[#0A0A0A]",
+    "header": "bg-[#FDFBF7] border-b-2 border-[#0A0A0A] sticky top-0 z-50"
+  },
+  "motion": {
+    "hover": "transform transition-all duration-200",
+    "entrance": "framer-motion staggered fade-up for feed and project lists.",
+    "micro_interactions": "Active states on interactive elements must physically depress (translate-x-1 translate-y-1) and lose shadow to mimic tactile buttons."
+  },
+  "icons_and_assets": {
+    "icon_library": "@phosphor-icons/react",
+    "icon_weight": "bold",
+    "installation_command": "yarn add @phosphor-icons/react"
+  },
+  "image_urls": {
+    "hero_background": {
+      "url": "https://images.pexels.com/photos/24349103/pexels-photo-24349103.jpeg",
+      "description": "Artistic abstract pastel painting.",
+      "usage": "Use as a textured, low-opacity background layer in the hero section."
+    },
+    "student_collaboration": {
+      "url": "https://images.pexels.com/photos/34526411/pexels-photo-34526411.jpeg",
+      "description": "Engaged students studying in a diverse environment.",
+      "usage": "Background or imagery for the 'Community Forum' or 'Project Hub' sections."
+    },
+    "coding_team": {
+      "url": "https://images.pexels.com/photos/6804069/pexels-photo-6804069.jpeg",
+      "description": "Two programmers discussing code on a monitor.",
+      "usage": "Hero image or teammate matching feature showcase visual."
+    },
+    "robotics_project": {
+      "url": "https://images.pexels.com/photos/26804169/pexels-photo-26804169.jpeg",
+      "description": "Robotic dog displayed at a tech event.",
+      "usage": "Example thumbnail for a project card in the Project Hub."
+    },
+    "tech_logo": {
+      "url": "https://images.pexels.com/photos/11035543/pexels-photo-11035543.jpeg",
+      "description": "Angular logo sticker.",
+      "usage": "Placeholder for 'verified portfolio' badges or opportunity sponsors."
+    }
+  },
+  "accessibility": {
+    "contrast": "Maintain APCA standards. Black text on pastel backgrounds provides excellent contrast.",
+    "focus_states": "focus:outline-none focus:ring-4 focus:ring-[#FF7B54]/50 focus:border-[#0A0A0A]",
+    "reduced_motion": "Respect prefers-reduced-motion for all framer-motion animations."
+  },
+  "instructions_to_main_agent": [
+    "CRITICAL: All interactive and key informational elements MUST include a data-testid attribute (kebab-case, role-based) for testing.",
+    "VIBE: Neo-Brutalist Pastels. The app must feel like a Gen-Z productivity tool—tactile, playful, high-contrast, avoiding generic SaaS aesthetics.",
+    "HERO SECTION: Make the 'tell me your goal' AI input the absolute centerpiece. It should be a massive, tactile input field with placeholder text simulating a conversation (e.g., 'I want to build a robotics project...'). Do NOT use a standard search bar.",
+    "COMPONENTS: Use Shadcn UI for complex logic (Dialog, Select, Tabs, Forms), but completely strip Vercel's default styling. Apply the heavy borders and offset shadows defined in 'surfaces'. Do NOT use default Shadcn cards.",
+    "LAYOUT: Apply the Bento 'Tetris' grid (Mode A) for the landing page. Apply the dense 'Control Room' grid (Mode B) for the Student Dashboard.",
+    "REPUTATION SIGNALS: Visually emphasize completed projects and endorsements using custom badges (using tech_logo image) over follower counts. Follower counts should be hidden or visually de-prioritized.",
+    "TYPOGRAPHY: Import and use 'Cabinet Grotesk' for all headings. Do not default to Inter or standard sans-serifs for headings. Keep tight letter spacing (tracking-tight) on large text.",
+    "BACKGROUNDS: Never use pure transparent backgrounds under headers. Use solid #FDFBF7 with a hard bottom border.",
+    "ICONS: Use Phosphor Icons with weight='bold' to match the thick borders of the neo-brutalist styling."
+  ]
+}
