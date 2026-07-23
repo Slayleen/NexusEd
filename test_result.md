@@ -205,6 +205,8 @@ test_plan:
 
 agent_communication:
     - agent: "main"
-      message: "Implemented reviews + connections + location-scoped opportunities and removed endorse. Recreated missing .env files (app was fully down). Please test the backend endpoints. Use seeded accounts (password123). Alice (alice@lincolnhs.edu) shares projects with Bob & Charlie -> can review them; cannot review Diana (expect 403). Test connection lifecycle: send request from Alice to Diana, then login as Diana and accept via /connections/{alice_id}/respond. Verify dashboard stats.connections increments and reputation reliability = avg of review reliability."
+      message: "Implemented reviews + connections + location-scoped opportunities and removed endorse. Recreated missing .env files (app was fully down). Please test the backend endpoints."
+    - agent: "testing"
+      message: "All backend tests PASSED: reviews (gating/upsert/reputation recompute), connections (send/accept/decline/auto-accept/self-block), endorse removed (404), reputation has no endorsements, opportunities include location, profile location persists."
     - agent: "testing"
       message: "Backend testing completed - ALL TESTS PASSED ✅. Tested all 3 high-priority backend tasks: (1) Reviews API - all functionality working including shared-project gating, reputation recompute, upsert behavior, self-review prevention. (2) Connections API - full lifecycle working including send/accept/decline, auto-accept, duplicate handling, dashboard stats. (3) Regression - endorse endpoint removed (404), reputation without endorsements, opportunities with location, profile location persists. All backend APIs are functioning correctly as per requirements. Ready for main agent to summarize and finish."
