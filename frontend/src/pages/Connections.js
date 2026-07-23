@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, formatError } from "@/api";
 import { PageHead, Avatar, Reputation } from "@/components/common";
-import { Handshake, Check, X, ChatCircleDots, UserPlus } from "@phosphor-icons/react";
+import ReviewModal from "@/components/ReviewModal";
+import { Handshake, Check, X, ChatCircleDots, UserPlus, Star } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 export default function Connections() {
@@ -10,6 +11,7 @@ export default function Connections() {
   const [connections, setConnections] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reviewing, setReviewing] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -94,14 +96,23 @@ export default function Connections() {
                 </div>
                 <p className="text-sm text-[#4A4A4A] font-medium line-clamp-2 mb-3">{s.bio}</p>
                 <div className="mb-4"><Reputation rep={s.reputation} /></div>
-                <button className="nb-btn nb-btn-sec text-sm py-2 mt-auto" onClick={() => nav("/app/messages", { state: { to: s } })} data-testid={`conn-message-${s.id}`}>
-                  <ChatCircleDots size={16} weight="bold" /> Message
-                </button>
+                <div className="mt-auto flex gap-2">
+                  <button className="nb-btn nb-btn-sec text-sm py-2 flex-1" onClick={() => nav("/app/messages", { state: { to: s } })} data-testid={`conn-message-${s.id}`}>
+                    <ChatCircleDots size={16} weight="bold" /> Message
+                  </button>
+                  <button className="nb-btn nb-btn-ghost text-sm py-2" title="Reviews" onClick={() => setReviewing({ ...s, can_review: true })} data-testid={`conn-review-${s.id}`}>
+                    <Star size={16} weight="bold" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {reviewing && (
+        <ReviewModal student={reviewing} onClose={() => setReviewing(null)} onSubmitted={load} />
+      )}
     </div>
   );
 }

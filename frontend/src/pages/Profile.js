@@ -2,6 +2,7 @@ import { useState } from "react";
 import { api } from "@/api";
 import { useAuth } from "@/AuthContext";
 import { PageHead, Avatar, Reputation } from "@/components/common";
+import { AreaPicker } from "@/components/AreaSelect";
 import { ShieldCheck, FloppyDisk, X, Plus, Shuffle, LinkSimple } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
@@ -124,7 +125,9 @@ export default function Profile() {
             </div>
           </div>
           <div><label className="nb-label">School</label><input className="nb-input mt-1" value={f.school} onChange={set("school")} data-testid="profile-school" /></div>
-          <div><label className="nb-label">Area / Location (for opportunities near you)</label><input className="nb-input mt-1" value={f.location} onChange={set("location")} data-testid="profile-location" placeholder="e.g. Boston, MA" /></div>
+          <div><label className="nb-label">Area / Location (for opportunities near you)</label>
+            <AreaPicker value={f.location} onChange={(loc) => setF({ ...f, location: loc })} testidPrefix="profile-area" />
+          </div>
           <div><label className="nb-label">Bio</label><textarea className="nb-input mt-1 min-h-[80px]" value={f.bio} onChange={set("bio")} data-testid="profile-bio" placeholder="What are you passionate about?" /></div>
 
           <TagEditor label="Skills" items={f.skills} color="bg-[#FFD166]" onChange={(v) => setF({ ...f, skills: v })} testid="profile-skills" />

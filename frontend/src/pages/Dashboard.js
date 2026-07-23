@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import { useAuth } from "@/AuthContext";
-import { PageHead, Avatar, Reputation, sortAreas } from "@/components/common";
+import { PageHead, Avatar, Reputation } from "@/components/common";
+import { AreaFilter } from "@/components/AreaSelect";
+import { parseLocation } from "@/constants/locations";
 import { Sparkle, Rocket, Trophy, Handshake, ArrowRight, CalendarBlank, MapPin } from "@phosphor-icons/react";
 
 const OPEN_TO_ALL = ["Remote", "Nationwide", "Online"];
@@ -11,7 +13,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const nav = useNavigate();
   const [data, setData] = useState(null);
-  const [scope, setScope] = useState("all"); // "all" (broaden) or a specific location (constrain)
+  const [area, setArea] = useState({ state: "all", city: "all" });
 
   useEffect(() => {
     api.get("/dashboard").then((r) => setData(r.data)).catch(() => {});
@@ -24,22 +26,28 @@ export default function Dashboard() {
   const locations = useMemo(() => {
     const set = new Set();
     allOpps.forEach((o) => { if (o.location && !OPEN_TO_ALL.includes(o.location)) set.add(o.location); });
-    return sortAreas(Array.from(set));
+    return Array.from(set);
   }, [allOpps]);
 
-  // Default the scope to the student's own area (constrain) if it has opportunities, else broaden.
+  // Default the area to the student's own area (constrain) if it has opportunities.
   useEffect(() => {
-    if (data && scope === "all" && user.location && locations.includes(user.location)) {
-      setScope(user.location);
+    if (data && area.state === "all" && user.location) {
+      const { state, city } = parseLocation(user.location);
+      if (state && locations.some((l) => parseLocation(l).state === state)) {
+        setArea({ state, city: locations.some((l) => l === user.location) ? city : "all" });
+      }
     }
     // eslint-disable-next-line
   }, [data, locations]);
 
   const opps = useMemo(() => {
-    if (scope === "all") return allOpps;
-    return allOpps.filter((o) => o.location === scope || OPEN_TO_ALL.includes(o.location));
-    // eslint-disable-next-line
-  }, [allOpps, scope]);
+    if (area.state === "all") return allOpps;
+    return allOpps.filter((o) => {
+      if (OPEN_TO_ALL.includes(o.location)) return true;
+      const p = parseLocation(o.location);
+      return p.state === area.state && (area.city === "all" || p.city === area.city);
+    });
+  }, [allOpps, area]);
 
   return (
     <div className="max-w-6xl mx-auto px-5 md:px-10 py-8">
@@ -95,15 +103,12 @@ export default function Dashboard() {
             <h2 className="font-display text-2xl font-bold tracking-tight">Opportunities</h2>
           </div>
 
-          {/* Area / scope selector */}
+          {/* Area / scope selector: State + City */}
           <div className="nb-card p-3 mb-4">
             <label className="nb-label flex items-center gap-1 mb-1"><MapPin size={14} weight="bold" /> Your area</label>
-            <select className="nb-input py-2 w-full" value={scope} onChange={(e) => setScope(e.target.value)} data-testid="opp-scope-select">
-              <option value="all">Everywhere (broaden)</option>
-              {locations.map((l) => <option key={l} value={l}>{l} + remote (constrain)</option>)}
-            </select>
+            <AreaFilter locations={locations} state={area.state} city={area.city} onChange={setArea} testidPrefix="opp" />
             <p className="text-xs text-[#4A4A4A] mt-1">
-              {scope === "all" ? "Showing all areas." : `Showing ${scope} plus remote/nationwide.`}
+              {area.state === "all" ? "Showing all areas (broadened)." : "Showing your area plus remote/nationwide."}
             </p>
           </div>
 

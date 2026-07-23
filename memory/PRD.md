@@ -38,9 +38,19 @@ Profiles+onboarding · AI teammate matching · Project Hub · Opportunity Board 
 - **P2**: Project accept/decline applicants + team management. Icebreaker generator & profile optimizer (AI). AI safety moderation. Communities (events/resources). Premium tier, organization accounts.
 
 ## Next Tasks
-1. Public profile view + verified collaboration endorsements on completed projects.
+1. Applicant management for project owners (accept into team).
 2. Personalized AI opportunity recommendations.
-3. Applicant management for project owners.
+
+## Update (2026-07-23) — Reviews, Connections, Area scoping
+- **Removed endorsements.** Reputation is now {projects_completed, reliability, avg_rating, review_count}.
+- **Collaborator reviews**: 1–5 stars + reliability score + comment. Allowed only between students who share a project OR are connected. Endpoints: GET/POST `/api/students/{id}/reviews` (upsert per reviewer→reviewee). `reliability` = average of review reliability scores (100% until first review); `avg_rating` = average stars.
+- **Connections (connect/accept)**: `/api/connections/{id}` (send; auto-accepts reverse pending), `/api/connections/{id}/respond` {accept|decline}, `GET /api/connections`, `GET /api/connections/requests`. Students list/detail carry `can_review` + `connection_status`. New Connections page (sidebar) with requests + connections; can leave/see reviews there.
+- **Dashboard**: "Students" stat replaced by **Connections** (with new-request badge); "Find teammates" now routes to Discover; opportunities scoped by area.
+- **Area selection**: profile + filters use State + City dropdowns (curated US dataset in `src/constants/locations.js`, `AreaSelect.js`). Location stored as "City, ST". Opportunities carry `location` and show it on dashboard + board; board has State/City area filter. Areas sorted by state then city.
+- **Messaging limits**: non-connections can send only ONE message; POST `/api/messages` returns 403 after that. `GET /api/messages/{id}` returns {messages, connected, can_send}. Connections have unlimited messaging.
+- **Projects**: "Apply" replaced by **Connect** to the project owner (uses connections); owner object carries `connection_status`.
+- **Infra**: recreated missing `backend/.env` and `frontend/.env` (app was down); re-seeded demo data with multi-member projects + opportunity locations. GROQ_API_KEY empty → AI match uses local fallback matcher (MOCKED AI ranking when no key/budget).
+
 
 ## Notes / Mocks
 - AI matching uses the Emergent universal LLM key; if key budget is exhausted it transparently falls back to a local matcher (still ranked + reasoned). Top up via Profile → Universal Key → Add Balance for full LLM quality.

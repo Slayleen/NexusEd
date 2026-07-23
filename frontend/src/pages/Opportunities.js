@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/api";
-import { PageHead, sortAreas } from "@/components/common";
+import { PageHead } from "@/components/common";
+import { AreaFilter } from "@/components/AreaSelect";
+import { parseLocation } from "@/constants/locations";
 import { Trophy, CalendarBlank, ArrowSquareOut, Buildings, MapPin } from "@phosphor-icons/react";
 
 const TYPES = ["All", "Research", "Competition", "Scholarship", "Internship", "Hackathon"];
@@ -13,19 +15,23 @@ const OPEN_TO_ALL = ["Remote", "Nationwide", "Online"];
 export default function Opportunities() {
   const [opps, setOpps] = useState([]);
   const [filter, setFilter] = useState("All");
-  const [area, setArea] = useState("all");
+  const [area, setArea] = useState({ state: "all", city: "all" });
 
   useEffect(() => { api.get("/opportunities").then((r) => setOpps(r.data)).catch(() => {}); }, []);
 
-  const areas = useMemo(() => {
-    const set = new Set();
-    opps.forEach((o) => { if (o.location && !OPEN_TO_ALL.includes(o.location)) set.add(o.location); });
-    return sortAreas(Array.from(set));
-  }, [opps]);
+  const locations = useMemo(() =>
+    opps.filter((o) => o.location && !OPEN_TO_ALL.includes(o.location)).map((o) => o.location), [opps]);
 
   const shown = opps.filter((o) => {
     const typeOk = filter === "All" || o.type === filter;
-    const areaOk = area === "all" || o.location === area || OPEN_TO_ALL.includes(o.location);
+    let areaOk = true;
+    if (area.state !== "all") {
+      if (OPEN_TO_ALL.includes(o.location)) areaOk = true;
+      else {
+        const p = parseLocation(o.location);
+        areaOk = p.state === area.state && (area.city === "all" || p.city === area.city);
+      }
+    }
     return typeOk && areaOk;
   });
 
@@ -40,12 +46,11 @@ export default function Opportunities() {
         ))}
       </div>
 
-      <div className="flex items-center gap-2 mb-6">
-        <MapPin size={18} weight="bold" className="text-[#4A4A4A]" />
-        <select className="nb-input py-2 max-w-xs" value={area} onChange={(e) => setArea(e.target.value)} data-testid="opp-area-select">
-          <option value="all">All areas</option>
-          {areas.map((a) => <option key={a} value={a}>{a} + remote</option>)}
-        </select>
+      <div className="flex items-center gap-2 mb-6 max-w-md">
+        <MapPin size={18} weight="bold" className="text-[#4A4A4A] shrink-0" />
+        <div className="flex-1">
+          <AreaFilter locations={locations} state={area.state} city={area.city} onChange={setArea} testidPrefix="oppboard" />
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
