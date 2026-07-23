@@ -2,7 +2,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/AuthContext";
 import {
   SquaresFour, Sparkle, Rocket, Trophy, ChatCircleDots,
-  UsersThree, Compass, SignOut, GraduationCap,
+  UsersThree, Compass, SignOut, GraduationCap, Handshake,
 } from "@phosphor-icons/react";
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
   { to: "/app/match", label: "AI Match", icon: Sparkle },
   { to: "/app/projects", label: "Projects", icon: Rocket },
   { to: "/app/discover", label: "Discover", icon: Compass },
+  { to: "/app/connections", label: "Connections", icon: Handshake },
   { to: "/app/opportunities", label: "Opportunities", icon: Trophy },
   { to: "/app/forum", label: "Forum", icon: UsersThree },
   { to: "/app/messages", label: "Messages", icon: ChatCircleDots },

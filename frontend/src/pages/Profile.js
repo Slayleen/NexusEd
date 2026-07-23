@@ -79,6 +79,7 @@ export default function Profile() {
   const [f, setF] = useState({
     name: user.name, school: user.school || "", grade: user.grade || "11th", bio: user.bio || "",
     avatar: user.avatar, interests: user.interests || [], skills: user.skills || [], looking_for: user.looking_for || [],
+    location: user.location || "",
   });
   const [saving, setSaving] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -103,6 +104,7 @@ export default function Profile() {
             <Avatar src={f.avatar} name={user.name} className="w-24 h-24 mx-auto" />
             <h3 className="font-display text-xl font-bold mt-3">{f.name}</h3>
             <p className="text-xs text-[#4A4A4A]">{f.grade} · {f.school}</p>
+            {f.location && <p className="text-xs text-[#4A4A4A]">📍 {f.location}</p>}
             {user.verified && (
               <div className="nb-chip bg-[#2ECC71] text-white mt-2 mx-auto"><ShieldCheck size={14} weight="fill" /> Verified student</div>
             )}
@@ -122,6 +124,7 @@ export default function Profile() {
             </div>
           </div>
           <div><label className="nb-label">School</label><input className="nb-input mt-1" value={f.school} onChange={set("school")} data-testid="profile-school" /></div>
+          <div><label className="nb-label">Area / Location (for opportunities near you)</label><input className="nb-input mt-1" value={f.location} onChange={set("location")} data-testid="profile-location" placeholder="e.g. Boston, MA" /></div>
           <div><label className="nb-label">Bio</label><textarea className="nb-input mt-1 min-h-[80px]" value={f.bio} onChange={set("bio")} data-testid="profile-bio" placeholder="What are you passionate about?" /></div>
 
           <TagEditor label="Skills" items={f.skills} color="bg-[#FFD166]" onChange={(v) => setF({ ...f, skills: v })} testid="profile-skills" />

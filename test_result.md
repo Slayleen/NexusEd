@@ -101,3 +101,110 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  Add a collaborator review system (star rating 1-5 + reliability score + comment), only between students
+  who share a project. Remove the "endorse" feature. Make the reliability indicator driven by reviews
+  (average of review reliability, 100% until first review). Add a real connect/accept connection system;
+  the dashboard "Students" box becomes "Connections". Opportunities on the dashboard are scoped by the
+  student's area/location with a broaden/constrain selector. The "Find teammates" button goes to Discover.
+
+backend:
+  - task: "Reviews API (create/list, shared-project gating, reputation recompute)"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "POST/GET /api/students/{sid}/reviews. Only allowed if reviewer & reviewee share a project (members). Upsert per reviewer->reviewee. recompute_reputation sets reliability=avg(reliability), avg_rating=avg(rating), review_count. Verified via curl: Alice can review Bob (member) -> rep updated; reviewing Diana returns 403."
+        - working: true
+          agent: "testing"
+          comment: "Comprehensive testing completed. ✓ GET /api/students returns can_review, connection_status, location fields. ✓ Alice successfully reviewed Bob (teammate) - reputation updated correctly (reliability=90, avg_rating=5.0, review_count=1). ✓ Alice blocked from reviewing Diana (non-teammate) with 403. ✓ Review upsert works - second review from Alice to Bob updates existing review (no duplicates). ✓ GET /api/students/{id}/reviews returns list with reviewer info. ✓ Self-review blocked with 400. All review functionality working as expected."
+  - task: "Connections API (send/respond/list/requests)"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "POST /api/connections/{sid} (auto-accepts if reverse pending), POST /api/connections/{sid}/respond {accept|decline}, GET /api/connections, GET /api/connections/requests. students list/detail include connection_status + can_review. Verified send returns pending_out via curl."
+        - working: true
+          agent: "testing"
+          comment: "Full connection lifecycle tested successfully. ✓ Alice sends request to Diana - returns pending_out. ✓ Diana sees Alice in GET /api/connections/requests. ✓ Diana accepts via POST /api/connections/{alice_id}/respond {action:accept} - returns connected. ✓ Both users see each other in GET /api/connections. ✓ Dashboard stats.connections and stats.connection_requests reflect correct counts (Alice=1, Diana=1). ✓ Decline flow works - Diana->George request declined, status=none, request removed from list. ✓ Auto-accept works - when B has pending from A and B posts to A, becomes connected. ✓ Self-connect blocked with 400. ✓ Duplicate handling works - sending request to already-connected user returns connected. All connection functionality working perfectly."
+  - task: "Remove endorse endpoint; dashboard stats connections + connection_requests; opportunities include location"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Removed /students/{sid}/endorse. reputation no longer has endorsements (now avg_rating/review_count). Dashboard returns stats.connections, stats.connection_requests, and all opportunities with location. Profile PUT accepts location. Re-seeded DB with multi-member projects + opportunity locations. NOTE: recreated missing backend/.env and frontend/.env (env files were absent, app was down)."
+        - working: true
+          agent: "testing"
+          comment: "Regression testing completed successfully. ✓ POST /api/students/{id}/endorse returns 404 (correctly removed). ✓ All student reputation objects do NOT contain 'endorsements' field. ✓ GET /api/opportunities returns 10 opportunities, all with location field. ✓ GET /api/dashboard opportunities (10 items) all include location field. ✓ PUT /api/profile with {location:'Boston, MA'} persists and is returned by GET /api/auth/me. All regression requirements met."
+
+frontend:
+  - task: "Dashboard: Connections box, Find teammates -> Discover, location-scoped opportunities"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Screenshot-verified visually. Awaiting user go-ahead for automated frontend test."
+  - task: "Discover: Connect/accept buttons + Review modal; endorse removed"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/Discover.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "ReviewModal component added. Awaiting user go-ahead for automated frontend test."
+  - task: "Connections page + nav; Profile location field"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/Connections.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "New /app/connections route + nav item. Profile location input added."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.1"
+  test_sequence: 2
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Reviews API (create/list, shared-project gating, reputation recompute)"
+    - "Connections API (send/respond/list/requests)"
+    - "Remove endorse endpoint; dashboard stats connections + connection_requests; opportunities include location"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+      message: "Implemented reviews + connections + location-scoped opportunities and removed endorse. Recreated missing .env files (app was fully down). Please test the backend endpoints. Use seeded accounts (password123). Alice (alice@lincolnhs.edu) shares projects with Bob & Charlie -> can review them; cannot review Diana (expect 403). Test connection lifecycle: send request from Alice to Diana, then login as Diana and accept via /connections/{alice_id}/respond. Verify dashboard stats.connections increments and reputation reliability = avg of review reliability."
+    - agent: "testing"
+      message: "Backend testing completed - ALL TESTS PASSED ✅. Tested all 3 high-priority backend tasks: (1) Reviews API - all functionality working including shared-project gating, reputation recompute, upsert behavior, self-review prevention. (2) Connections API - full lifecycle working including send/accept/decline, auto-accept, duplicate handling, dashboard stats. (3) Regression - endorse endpoint removed (404), reputation without endorsements, opportunities with location, profile location persists. All backend APIs are functioning correctly as per requirements. Ready for main agent to summarize and finish."

@@ -1,4 +1,5 @@
 import { Trophy, Star, ShieldCheck } from "@phosphor-icons/react";
+export { Star };
 
 export function PageHead({ label, title, children }) {
   return (
@@ -15,10 +16,13 @@ export function PageHead({ label, title, children }) {
 export function Reputation({ rep, size = "sm" }) {
   if (!rep) return null;
   const cls = size === "sm" ? "text-xs" : "text-sm";
+  const hasReviews = (rep.review_count || 0) > 0;
   return (
     <div className={`flex flex-wrap gap-2 ${cls}`}>
       <span className="nb-chip bg-[#FFD166]"><Trophy size={14} weight="bold" /> {rep.projects_completed} done</span>
-      <span className="nb-chip bg-[#A0C4FF]"><Star size={14} weight="bold" /> {rep.endorsements} endorsed</span>
+      {hasReviews && (
+        <span className="nb-chip bg-[#A0C4FF]"><Star size={14} weight="fill" /> {rep.avg_rating} ({rep.review_count})</span>
+      )}
       <span className="nb-chip bg-white"><ShieldCheck size={14} weight="bold" /> {rep.reliability}% reliable</span>
     </div>
   );

@@ -13,6 +13,7 @@ import Messages from "@/pages/Messages";
 import Forum from "@/pages/Forum";
 import Profile from "@/pages/Profile";
 import Discover from "@/pages/Discover";
+import Connections from "@/pages/Connections";
 
 function Loader() {
   return (
@@ -50,6 +51,7 @@ function App() {
           <Route path="/app/projects" element={<Protected><Projects /></Protected>} />
           <Route path="/app/opportunities" element={<Protected><Opportunities /></Protected>} />
           <Route path="/app/discover" element={<Protected><Discover /></Protected>} />
+          <Route path="/app/connections" element={<Protected><Connections /></Protected>} />
           <Route path="/app/messages" element={<Protected><Messages /></Protected>} />
           <Route path="/app/forum" element={<Protected><Forum /></Protected>} />
           <Route path="/app/profile" element={<Protected><Profile /></Protected>} />

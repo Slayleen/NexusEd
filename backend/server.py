@@ -69,6 +69,44 @@ async def user_map(ids):
     docs = await db.users.find({"_id": {"$in": oids}}, {"name": 1, "avatar": 1}).to_list(len(oids))
     return {str(d["_id"]): {"id": str(d["_id"]), "name": d.get("name"), "avatar": d.get("avatar")} for d in docs}
 
+async def shared_project_user_ids(uid: str) -> set:
+    """User ids that share at least one project (as members) with the given user."""
+    projects = await db.projects.find({"members": uid}).to_list(200)
+    ids = set()
+    for p in projects:
+        for m in p.get("members", []):
+            if m and m != uid:
+                ids.add(m)
+    return ids
+
+async def my_connection_map(uid: str) -> dict:
+    """Map other_user_id -> status relative to `uid`: connected / pending_out / pending_in."""
+    conns = await db.connections.find({"$or": [{"requester_id": uid}, {"recipient_id": uid}]}).to_list(2000)
+    out = {}
+    for c in conns:
+        other = c["recipient_id"] if c["requester_id"] == uid else c["requester_id"]
+        if c["status"] == "accepted":
+            out[other] = "connected"
+        elif c["requester_id"] == uid:
+            out[other] = "pending_out"
+        else:
+            out[other] = "pending_in"
+    return out
+
+async def recompute_reputation(uid: str):
+    reviews = await db.reviews.find({"reviewee_id": uid}).to_list(2000)
+    if reviews:
+        reliability = round(sum(r["reliability"] for r in reviews) / len(reviews))
+        avg_rating = round(sum(r["rating"] for r in reviews) / len(reviews), 1)
+    else:
+        reliability = 100
+        avg_rating = 0
+    await db.users.update_one({"_id": ObjectId(uid)}, {"$set": {
+        "reputation.reliability": reliability,
+        "reputation.avg_rating": avg_rating,
+        "reputation.review_count": len(reviews),
+    }})
+
 class RegisterInput(BaseModel):
     name: str
     email: str
@@ -89,6 +127,7 @@ class ProfileUpdate(BaseModel):
     interests: Optional[List[str]] = None
     skills: Optional[List[str]] = None
     looking_for: Optional[List[str]] = None
+    location: Optional[str] = None
 
 class ProjectInput(BaseModel):
     title: str
@@ -106,6 +145,7 @@ class OpportunityInput(BaseModel):
     deadline: Optional[str] = ""
     tags: List[str] = []
     link: Optional[str] = ""
+    location: Optional[str] = "Remote"
 
 class MessageInput(BaseModel):
     to_user_id: str
@@ -121,6 +161,12 @@ class ForumCommentInput(BaseModel):
 
 class MatchInput(BaseModel):
     goal: str
+
+class ReviewInput(BaseModel):
+    rating: int              # 1-5
+    reliability: int         # 0-100
+    comment: str = ""
+    project_id: Optional[str] = None
 
 async def get_current_user(request: Request) -> dict:
     token = request.cookies.get("access_token")
@@ -154,9 +200,9 @@ async def register(data: RegisterInput, response: Response):
         "email": email, "password_hash": hash_password(data.password),
         "name": data.name, "school": data.school or "", "grade": data.grade or "",
         "bio": "", "avatar": f"https://api.dicebear.com/7.x/thumbs/svg?seed={data.name}",
-        "interests": [], "skills": [], "looking_for": [],
+        "interests": [], "skills": [], "looking_for": [], "location": "",
         "verified": email.endswith(".edu"), "role": "student",
-        "reputation": {"projects_completed": 0, "endorsements": 0, "reliability": 100},
+        "reputation": {"projects_completed": 0, "reliability": 100, "avg_rating": 0, "review_count": 0},
         "created_at": now_iso(),
     }
     res = await db.users.insert_one(doc)
@@ -194,20 +240,128 @@ async def update_profile(data: ProfileUpdate, user: dict = Depends(get_current_u
 @api_router.get("/students")
 async def list_students(user: dict = Depends(get_current_user)):
     students = await db.users.find({"role": "student"}).to_list(200)
-    return [clean(s) for s in students if str(s["_id"]) != user["id"]]
+    shared = await shared_project_user_ids(user["id"])
+    conn_map = await my_connection_map(user["id"])
+    out = []
+    for s in students:
+        sid = str(s["_id"])
+        if sid == user["id"]:
+            continue
+        c = clean(s)
+        c["can_review"] = sid in shared
+        c["connection_status"] = conn_map.get(sid, "none")
+        out.append(c)
+    return out
 
 @api_router.get("/students/{sid}")
 async def get_student(sid: str, user: dict = Depends(get_current_user)):
     s = await db.users.find_one({"_id": ObjectId(sid)})
     if not s:
         raise HTTPException(status_code=404, detail="Not found")
-    return clean(s)
+    c = clean(s)
+    shared = await shared_project_user_ids(user["id"])
+    conn_map = await my_connection_map(user["id"])
+    c["can_review"] = sid in shared
+    c["connection_status"] = conn_map.get(sid, "none")
+    return c
 
-@api_router.post("/students/{sid}/endorse")
-async def endorse(sid: str, user: dict = Depends(get_current_user)):
-    await db.users.update_one({"_id": ObjectId(sid)}, {"$inc": {"reputation.endorsements": 1}})
-    s = await db.users.find_one({"_id": ObjectId(sid)})
-    return clean(s)
+@api_router.get("/students/{sid}/reviews")
+async def list_reviews(sid: str, user: dict = Depends(get_current_user)):
+    reviews = await db.reviews.find({"reviewee_id": sid}).sort("created_at", -1).to_list(500)
+    umap = await user_map([r["reviewer_id"] for r in reviews])
+    out = []
+    for r in reviews:
+        r = clean(r)
+        r["reviewer"] = umap.get(r["reviewer_id"])
+        out.append(r)
+    return out
+
+@api_router.post("/students/{sid}/reviews")
+async def create_review(sid: str, data: ReviewInput, user: dict = Depends(get_current_user)):
+    if sid == user["id"]:
+        raise HTTPException(status_code=400, detail="You cannot review yourself")
+    target = await db.users.find_one({"_id": ObjectId(sid)})
+    if not target:
+        raise HTTPException(status_code=404, detail="Student not found")
+    shared = await shared_project_user_ids(user["id"])
+    if sid not in shared:
+        raise HTTPException(status_code=403, detail="You can only review students you've collaborated with on a project")
+    rating = max(1, min(5, int(data.rating)))
+    reliability = max(0, min(100, int(data.reliability)))
+    doc = {
+        "reviewer_id": user["id"], "reviewee_id": sid,
+        "project_id": data.project_id, "rating": rating,
+        "reliability": reliability, "comment": (data.comment or "").strip(),
+        "reviewer_name": user["name"], "reviewer_avatar": user.get("avatar"),
+        "created_at": now_iso(),
+    }
+    # one review per reviewer -> reviewee (upsert = editable)
+    await db.reviews.update_one(
+        {"reviewer_id": user["id"], "reviewee_id": sid},
+        {"$set": doc}, upsert=True,
+    )
+    await recompute_reputation(sid)
+    fresh = await db.users.find_one({"_id": ObjectId(sid)})
+    return clean(fresh)
+
+@api_router.post("/connections/{sid}")
+async def send_connection(sid: str, user: dict = Depends(get_current_user)):
+    if sid == user["id"]:
+        raise HTTPException(status_code=400, detail="You cannot connect with yourself")
+    if not await db.users.find_one({"_id": ObjectId(sid)}):
+        raise HTTPException(status_code=404, detail="Student not found")
+    existing = await db.connections.find_one({"$or": [
+        {"requester_id": user["id"], "recipient_id": sid},
+        {"requester_id": sid, "recipient_id": user["id"]},
+    ]})
+    if existing:
+        # if the other person already requested me, accept it
+        if existing["status"] == "pending" and existing["recipient_id"] == user["id"]:
+            await db.connections.update_one({"_id": existing["_id"]},
+                                            {"$set": {"status": "accepted", "updated_at": now_iso()}})
+            return {"status": "connected"}
+        return {"status": "connected" if existing["status"] == "accepted" else (
+            "pending_out" if existing["requester_id"] == user["id"] else "pending_in")}
+    await db.connections.insert_one({
+        "requester_id": user["id"], "recipient_id": sid,
+        "status": "pending", "created_at": now_iso(), "updated_at": now_iso(),
+    })
+    return {"status": "pending_out"}
+
+@api_router.post("/connections/{sid}/respond")
+async def respond_connection(sid: str, body: dict, user: dict = Depends(get_current_user)):
+    action = body.get("action")
+    conn = await db.connections.find_one({"requester_id": sid, "recipient_id": user["id"], "status": "pending"})
+    if not conn:
+        raise HTTPException(status_code=404, detail="No pending request from this student")
+    if action == "accept":
+        await db.connections.update_one({"_id": conn["_id"]},
+                                        {"$set": {"status": "accepted", "updated_at": now_iso()}})
+        return {"status": "connected"}
+    await db.connections.delete_one({"_id": conn["_id"]})
+    return {"status": "none"}
+
+@api_router.get("/connections")
+async def list_connections(user: dict = Depends(get_current_user)):
+    conns = await db.connections.find({"status": "accepted", "$or": [
+        {"requester_id": user["id"]}, {"recipient_id": user["id"]},
+    ]}).to_list(1000)
+    other_ids = [c["recipient_id"] if c["requester_id"] == user["id"] else c["requester_id"] for c in conns]
+    oids = [ObjectId(i) for i in other_ids]
+    docs = await db.users.find({"_id": {"$in": oids}}).to_list(len(oids)) if oids else []
+    return [clean(d) for d in docs]
+
+@api_router.get("/connections/requests")
+async def list_requests(user: dict = Depends(get_current_user)):
+    conns = await db.connections.find({"recipient_id": user["id"], "status": "pending"}).sort("created_at", -1).to_list(1000)
+    umap = await user_map([c["requester_id"] for c in conns])
+    out = []
+    for c in conns:
+        u = umap.get(c["requester_id"])
+        if u:
+            full = await db.users.find_one({"_id": ObjectId(c["requester_id"])})
+            out.append(clean(full))
+    return out
 
 def _local_match(goal, candidates):
     import re
@@ -417,16 +571,21 @@ async def upvote(pid: str, user: dict = Depends(get_current_user)):
 @api_router.get("/dashboard")
 async def dashboard(user: dict = Depends(get_current_user)):
     my_projects = await db.projects.find({"members": user["id"]}).to_list(50)
-    opps = await db.opportunities.find().sort("created_at", -1).to_list(4)
+    opps = await db.opportunities.find().sort("created_at", -1).to_list(200)
     students = await db.users.find({"role": "student"}).to_list(50)
     suggested = [clean(s) for s in students if str(s["_id"]) != user["id"]][:4]
+    connections_count = await db.connections.count_documents({"status": "accepted", "$or": [
+        {"requester_id": user["id"]}, {"recipient_id": user["id"]},
+    ]})
+    requests_count = await db.connections.count_documents({"recipient_id": user["id"], "status": "pending"})
     return {
         "my_projects": [clean(p) for p in my_projects],
         "opportunities": [clean(o) for o in opps],
         "suggested_teammates": suggested,
         "stats": {
             "projects": len(my_projects),
-            "students": len(students),
+            "connections": connections_count,
+            "connection_requests": requests_count,
             "opportunities": await db.opportunities.count_documents({}),
         }
     }
@@ -457,23 +616,29 @@ async def seed():
     logger.info("Seeding demo data...")
     id_map = {}
     for s in STUDENTS:
+        rep = dict(s["reputation"])
+        rep.setdefault("avg_rating", 0)
+        rep.setdefault("review_count", 0)
+        rep.pop("endorsements", None)
         doc = {
             "email": s["email"], "password_hash": hash_password("password123"),
             "name": s["name"], "school": s["school"], "grade": s["grade"],
             "bio": s["bio"], "avatar": f"https://api.dicebear.com/7.x/thumbs/svg?seed={s['name'].replace(' ','')}",
             "interests": s["interests"], "skills": s["skills"], "looking_for": s["looking_for"],
+            "location": s.get("location", ""),
             "verified": True, "role": "student",
-            "reputation": s["reputation"], "created_at": now_iso(),
+            "reputation": rep, "created_at": now_iso(),
         }
         res = await db.users.insert_one(doc)
         id_map[s["name"]] = str(res.inserted_id)
 
     for p in PROJECTS:
         owner = id_map[p["owner"]]
+        member_ids = [owner] + [id_map[m] for m in p.get("members", []) if m in id_map and id_map[m] != owner]
         await db.projects.insert_one({
             "title": p["title"], "description": p["description"], "category": p["category"],
             "roles_needed": p["roles_needed"], "skills": p["skills"], "timeline": p["timeline"],
-            "owner_id": owner, "members": [owner], "applicants": [],
+            "owner_id": owner, "members": member_ids, "applicants": [],
             "status": p["status"], "progress": p["progress"], "created_at": now_iso(),
         })
 
