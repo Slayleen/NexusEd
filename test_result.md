@@ -152,6 +152,48 @@ backend:
         - working: true
           agent: "testing"
           comment: "Regression testing completed successfully. ✓ POST /api/students/{id}/endorse returns 404 (correctly removed). ✓ All student reputation objects do NOT contain 'endorsements' field. ✓ GET /api/opportunities returns 10 opportunities, all with location field. ✓ GET /api/dashboard opportunities (10 items) all include location field. ✓ PUT /api/profile with {location:'Boston, MA'} persists and is returned by GET /api/auth/me. All regression requirements met."
+  - task: "Messaging limit for strangers (1 message until connected)"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "POST /api/messages enforces 1-message limit for non-connected users. GET /api/messages/{id} returns object with {messages, connected, can_send}. Verified via curl: stranger sends 1st msg (200), 2nd msg returns 403."
+        - working: true
+          agent: "testing"
+          comment: "ROUND 2 testing completed. ✓ Diana (stranger) sends first message to Ethan - succeeds (200). ✓ Second message from Diana to Ethan correctly blocked with 403 and appropriate error message. ✓ GET /api/messages/{ethan_id} returns correct object structure with messages (array), connected (false), can_send (false). ✓ After Diana and Ethan connect, GET /api/messages shows connected=true and can_send=true. ✓ Diana successfully sends 3 additional messages after connecting (no 403). All messaging limit functionality working correctly."
+  - task: "Reviews allowed for connections (not only project teammates)"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "POST /api/students/{sid}/reviews now allows reviews if shared project OR connected. GET /api/students can_review=true if teammate OR connected. Verified via curl: review after connect succeeds."
+        - working: true
+          agent: "testing"
+          comment: "ROUND 2 testing completed. ✓ Hana initially cannot review George (non-teammate, non-connection) - correctly blocked with 403. ✓ After Hana and George connect, GET /api/students shows can_review=true and connection_status=connected for George. ✓ Hana successfully reviews George after connection - reputation recomputed correctly (reliability=85, avg_rating=4.0, review_count=1). ✓ Review for Diana (neither teammate nor connection) still correctly blocked with 403. All review-for-connections functionality working correctly."
+  - task: "Projects owner connection_status field"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "GET /api/projects owner object includes connection_status field (self/none/pending_out/connected). Verified via curl: own project shows 'self', others show appropriate status."
+        - working: true
+          agent: "testing"
+          comment: "ROUND 2 testing completed. ✓ GET /api/projects returns all projects with owner.connection_status field. ✓ All connection_status values are valid (self/none/pending_out/pending_in/connected). ✓ Alice's own project correctly shows connection_status='self'. ✓ Projects owned by others show appropriate connection_status based on relationship. ✓ Connection status updates correctly after connecting to project owner. All project owner connection_status functionality working correctly."
 
 frontend:
   - task: "Dashboard: Connections box, Find teammates -> Discover, location-scoped opportunities"
@@ -190,15 +232,15 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "1.1"
-  test_sequence: 2
+  version: "1.2"
+  test_sequence: 3
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Reviews API (create/list, shared-project gating, reputation recompute)"
-    - "Connections API (send/respond/list/requests)"
-    - "Remove endorse endpoint; dashboard stats connections + connection_requests; opportunities include location"
+    - "Messaging limit for strangers (1 message until connected)"
+    - "Reviews allowed for connections (not only project teammates)"
+    - "Projects owner connection_status field"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -208,5 +250,9 @@ agent_communication:
       message: "Implemented reviews + connections + location-scoped opportunities and removed endorse. Recreated missing .env files (app was fully down). Please test the backend endpoints."
     - agent: "testing"
       message: "All backend tests PASSED: reviews (gating/upsert/reputation recompute), connections (send/accept/decline/auto-accept/self-block), endorse removed (404), reputation has no endorsements, opportunities include location, profile location persists."
+    - agent: "main"
+      message: "ROUND 2 changes to test: (1) Messaging limit: a user who is NOT connected to the recipient can send only ONE message; the 2nd POST /api/messages returns 403. GET /api/messages/{id} now returns object {messages, connected, can_send}. Connected users have no limit. (2) Reviews now allowed for CONNECTED users too (not only project mates): can_review true if shared project OR accepted connection; POST review succeeds for a connection. (3) GET /api/projects owner object now has connection_status (self/none/pending_out/connected). Please retest these three areas plus regression on reviews/connections. Verified via curl already: stranger 1-msg limit (200 then 403), review after connect works, project owner status present."
     - agent: "testing"
       message: "Backend testing completed - ALL TESTS PASSED ✅. Tested all 3 high-priority backend tasks: (1) Reviews API - all functionality working including shared-project gating, reputation recompute, upsert behavior, self-review prevention. (2) Connections API - full lifecycle working including send/accept/decline, auto-accept, duplicate handling, dashboard stats. (3) Regression - endorse endpoint removed (404), reputation without endorsements, opportunities with location, profile location persists. All backend APIs are functioning correctly as per requirements. Ready for main agent to summarize and finish."
+    - agent: "testing"
+      message: "ROUND 2 backend testing completed - ALL TESTS PASSED ✅. Comprehensive testing of three new features: (1) MESSAGING LIMIT FOR STRANGERS - First message succeeds, second returns 403 with appropriate error. GET /api/messages/{id} returns correct object structure {messages, connected, can_send}. After connecting, unlimited messages work. (2) REVIEWS ALLOWED FOR CONNECTIONS - Non-connected users cannot review (403). After connecting, can_review=true and review succeeds. Reputation recomputes correctly. Reviews for non-teammates/non-connections still blocked. (3) PROJECTS OWNER CONNECTION_STATUS - All projects include owner.connection_status field with valid values (self/none/pending_out/connected). Own projects show 'self'. Status updates correctly after connecting. DASHBOARD REGRESSION - stats.connections and stats.connection_requests present, all opportunities include location field. All backend APIs functioning correctly. Ready for main agent to summarize and finish."

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/api";
 import { useAuth } from "@/AuthContext";
-import { PageHead, Avatar, Reputation } from "@/components/common";
+import { PageHead, Avatar, Reputation, sortAreas } from "@/components/common";
 import { Sparkle, Rocket, Trophy, Handshake, ArrowRight, CalendarBlank, MapPin } from "@phosphor-icons/react";
 
 const OPEN_TO_ALL = ["Remote", "Nationwide", "Online"];
@@ -24,7 +24,7 @@ export default function Dashboard() {
   const locations = useMemo(() => {
     const set = new Set();
     allOpps.forEach((o) => { if (o.location && !OPEN_TO_ALL.includes(o.location)) set.add(o.location); });
-    return Array.from(set).sort();
+    return sortAreas(Array.from(set));
   }, [allOpps]);
 
   // Default the scope to the student's own area (constrain) if it has opportunities, else broaden.

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { api } from "@/api";
+import { api, formatError } from "@/api";
 import { useAuth } from "@/AuthContext";
 import { Avatar } from "@/components/common";
-import { PaperPlaneRight, ChatCircleDots } from "@phosphor-icons/react";
+import { PaperPlaneRight, ChatCircleDots, LockSimple } from "@phosphor-icons/react";
+import { toast } from "sonner";
 
 export default function Messages() {
   const { user } = useAuth();
@@ -11,6 +12,8 @@ export default function Messages() {
   const [convos, setConvos] = useState([]);
   const [active, setActive] = useState(null); // {id,name,avatar}
   const [messages, setMessages] = useState([]);
+  const [canSend, setCanSend] = useState(true);
+  const [connected, setConnected] = useState(false);
   const [text, setText] = useState("");
   const endRef = useRef(null);
 
@@ -24,7 +27,12 @@ export default function Messages() {
   useEffect(() => {
     if (!active) return;
     let alive = true;
-    const load = () => api.get(`/messages/${active.id}`).then((r) => { if (alive) setMessages(r.data); }).catch(() => {});
+    const load = () => api.get(`/messages/${active.id}`).then((r) => {
+      if (!alive) return;
+      setMessages(r.data.messages || []);
+      setCanSend(r.data.can_send);
+      setConnected(r.data.connected);
+    }).catch(() => {});
     load();
     const iv = setInterval(load, 3000);
     return () => { alive = false; clearInterval(iv); };
@@ -42,7 +50,13 @@ export default function Messages() {
     try {
       await api.post("/messages", { to_user_id: active.id, text: t });
       loadConvos();
-    } catch { /* ignore */ }
+      if (!connected) setCanSend(false);
+    } catch (err) {
+      setMessages((m) => m.filter((x) => x.id !== optimistic.id));
+      setText(t);
+      setCanSend(false);
+      toast.error(formatError(err?.response?.data?.detail));
+    }
   };
 
   const mergedConvos = active && !convos.find((c) => c.user.id === active.id)
@@ -99,9 +113,22 @@ export default function Messages() {
                 })}
                 <div ref={endRef} />
               </div>
-              <form onSubmit={send} className="flex gap-2 p-3 border-t-2 border-[#0A0A0A] bg-white">
-                <input className="nb-input flex-1" placeholder="Type a message…" value={text} onChange={(e) => setText(e.target.value)} data-testid="message-input" />
-                <button type="submit" className="nb-btn px-4" data-testid="message-send"><PaperPlaneRight size={20} weight="bold" /></button>
+              <form onSubmit={send} className="flex flex-col gap-1 p-3 border-t-2 border-[#0A0A0A] bg-white">
+                {!connected && (
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-[#4A4A4A] px-1">
+                    <LockSimple size={13} weight="bold" />
+                    {canSend
+                      ? "You can send one intro message. Connect to keep chatting."
+                      : "Message limit reached — send a connection request to keep chatting."}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input className="nb-input flex-1" placeholder={canSend ? "Type a message…" : "Connect to send more messages"}
+                    value={text} onChange={(e) => setText(e.target.value)} disabled={!canSend} data-testid="message-input" />
+                  <button type="submit" className="nb-btn px-4 disabled:opacity-40" disabled={!canSend} data-testid="message-send">
+                    <PaperPlaneRight size={20} weight="bold" />
+                  </button>
+                </div>
               </form>
             </>
           )}

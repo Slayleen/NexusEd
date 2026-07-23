@@ -39,3 +39,13 @@ export function Chips({ items, color = "bg-white" }) {
     </div>
   );
 }
+
+// Sort location strings "City, ST" by state first, then city.
+export function areaSortKey(loc) {
+  const parts = (loc || "").split(",").map((s) => s.trim());
+  if (parts.length >= 2) return `${parts[1]} ${parts[0]}`.toLowerCase();
+  return (loc || "").toLowerCase();
+}
+export function sortAreas(list) {
+  return [...list].sort((a, b) => areaSortKey(a).localeCompare(areaSortKey(b)));
+}

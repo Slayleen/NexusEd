@@ -93,6 +93,13 @@ async def my_connection_map(uid: str) -> dict:
             out[other] = "pending_in"
     return out
 
+async def are_connected(a: str, b: str) -> bool:
+    c = await db.connections.find_one({"status": "accepted", "$or": [
+        {"requester_id": a, "recipient_id": b},
+        {"requester_id": b, "recipient_id": a},
+    ]})
+    return bool(c)
+
 async def recompute_reputation(uid: str):
     reviews = await db.reviews.find({"reviewee_id": uid}).to_list(2000)
     if reviews:
@@ -248,8 +255,9 @@ async def list_students(user: dict = Depends(get_current_user)):
         if sid == user["id"]:
             continue
         c = clean(s)
-        c["can_review"] = sid in shared
-        c["connection_status"] = conn_map.get(sid, "none")
+        status = conn_map.get(sid, "none")
+        c["can_review"] = (sid in shared) or (status == "connected")
+        c["connection_status"] = status
         out.append(c)
     return out
 
@@ -261,8 +269,9 @@ async def get_student(sid: str, user: dict = Depends(get_current_user)):
     c = clean(s)
     shared = await shared_project_user_ids(user["id"])
     conn_map = await my_connection_map(user["id"])
-    c["can_review"] = sid in shared
-    c["connection_status"] = conn_map.get(sid, "none")
+    status = conn_map.get(sid, "none")
+    c["can_review"] = (sid in shared) or (status == "connected")
+    c["connection_status"] = status
     return c
 
 @api_router.get("/students/{sid}/reviews")
@@ -284,8 +293,9 @@ async def create_review(sid: str, data: ReviewInput, user: dict = Depends(get_cu
     if not target:
         raise HTTPException(status_code=404, detail="Student not found")
     shared = await shared_project_user_ids(user["id"])
-    if sid not in shared:
-        raise HTTPException(status_code=403, detail="You can only review students you've collaborated with on a project")
+    connected = await are_connected(user["id"], sid)
+    if sid not in shared and not connected:
+        raise HTTPException(status_code=403, detail="You can only review students you've collaborated with on a project or are connected with")
     rating = max(1, min(5, int(data.rating)))
     reliability = max(0, min(100, int(data.reliability)))
     doc = {
@@ -438,10 +448,15 @@ async def ai_match(data: MatchInput, user: dict = Depends(get_current_user)):
 async def list_projects(user: dict = Depends(get_current_user)):
     projects = await db.projects.find().sort("created_at", -1).to_list(200)
     umap = await user_map([p["owner_id"] for p in projects])
+    conn_map = await my_connection_map(user["id"])
     out = []
     for p in projects:
         p = clean(p)
-        p["owner"] = umap.get(p["owner_id"])
+        owner = umap.get(p["owner_id"])
+        if owner:
+            owner = dict(owner)
+            owner["connection_status"] = "self" if p["owner_id"] == user["id"] else conn_map.get(p["owner_id"], "none")
+        p["owner"] = owner
         out.append(p)
     return out
 
@@ -503,10 +518,22 @@ async def get_messages(other_id: str, user: dict = Depends(get_current_user)):
     msgs = await db.messages.find({"$or": [
         {"from_user_id": user["id"], "to_user_id": other_id},
         {"from_user_id": other_id, "to_user_id": user["id"]}]}).sort("created_at", 1).to_list(1000)
-    return [clean(m) for m in msgs]
+    connected = await are_connected(user["id"], other_id)
+    sent = await db.messages.count_documents({"from_user_id": user["id"], "to_user_id": other_id})
+    return {
+        "messages": [clean(m) for m in msgs],
+        "connected": connected,
+        "can_send": connected or sent < 1,
+    }
 
 @api_router.post("/messages")
 async def post_message(data: MessageInput, user: dict = Depends(get_current_user)):
+    connected = await are_connected(user["id"], data.to_user_id)
+    if not connected:
+        sent = await db.messages.count_documents({"from_user_id": user["id"], "to_user_id": data.to_user_id})
+        if sent >= 1:
+            raise HTTPException(status_code=403,
+                                detail="You can only send one message until you connect. Send a connection request to keep chatting.")
     doc = {"from_user_id": user["id"], "to_user_id": data.to_user_id,
            "text": data.text, "created_at": now_iso()}
     res = await db.messages.insert_one(doc)

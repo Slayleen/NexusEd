@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { api } from "@/api";
+import { api, formatError } from "@/api";
 import { useAuth } from "@/AuthContext";
 import { PageHead, Avatar, Chips } from "@/components/common";
-import { Rocket, Plus, X, UsersThree, Clock, CheckCircle } from "@phosphor-icons/react";
+import { Rocket, Plus, X, Handshake, Clock, CheckCircle, Check } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const CATEGORIES = ["AI / Machine Learning", "Robotics", "Web Dev", "Research", "Startups", "Nonprofit", "Game Dev", "Other"];
@@ -16,11 +16,13 @@ export default function Projects() {
   const load = () => api.get("/projects").then((r) => setProjects(r.data)).catch(() => {});
   useEffect(() => { load(); }, []);
 
-  const join = async (p) => {
+  const connectOwner = async (p) => {
     try {
-      await api.post(`/projects/${p.id}/join`);
-      toast.success(`Applied to "${p.title}"! The owner will review your request.`);
-    } catch { toast.error("Could not apply."); }
+      const { data } = await api.post(`/connections/${p.owner_id}`);
+      if (data.status === "connected") toast.success(`Connected with ${p.owner?.name?.split(" ")[0]}! 🤝`);
+      else toast.success(`Connection request sent to ${p.owner?.name?.split(" ")[0]} about "${p.title}".`);
+      load();
+    } catch (e) { toast.error(formatError(e?.response?.data?.detail)); }
   };
 
   const shown = filter === "All" ? projects : projects.filter((p) => p.category === filter);
@@ -74,9 +76,13 @@ export default function Projects() {
               </div>
               {p.owner_id === user.id
                 ? <span className="nb-chip bg-white">You own this</span>
-                : <button className="nb-btn nb-btn-sec text-sm py-2" onClick={() => join(p)} data-testid={`join-${p.id}`}>
-                    <UsersThree size={16} weight="bold" /> Apply
-                  </button>}
+                : p.owner?.connection_status === "connected"
+                  ? <span className="nb-chip bg-[#2ECC71] text-white"><Check size={14} weight="bold" /> Connected</span>
+                  : p.owner?.connection_status === "pending_out"
+                    ? <span className="nb-chip bg-white"><Clock size={14} weight="bold" /> Requested</span>
+                    : <button className="nb-btn nb-btn-sec text-sm py-2" onClick={() => connectOwner(p)} data-testid={`connect-owner-${p.id}`}>
+                        <Handshake size={16} weight="bold" /> Connect
+                      </button>}
             </div>
           </div>
         ))}
