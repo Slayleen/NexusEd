@@ -4,7 +4,7 @@ import { api } from "@/api";
 import { useAuth } from "@/AuthContext";
 import { PageHead, Avatar, Reputation } from "@/components/common";
 import { AreaFilter } from "@/components/AreaSelect";
-import { parseLocation } from "@/constants/locations";
+import { parseLocation, citiesForState } from "@/constants/locations";
 import { Sparkle, Rocket, Trophy, Handshake, ArrowRight, CalendarBlank, MapPin } from "@phosphor-icons/react";
 
 const OPEN_TO_ALL = ["Remote", "Nationwide", "Online"];
@@ -24,23 +24,14 @@ export default function Dashboard() {
   const stats = data?.stats || {};
   const allOpps = useMemo(() => recs, [recs]);
 
-  // Locations available across opportunities (excluding the "open to everyone" ones)
-  const locations = useMemo(() => {
-    const set = new Set();
-    allOpps.forEach((o) => { if (o.location && !OPEN_TO_ALL.includes(o.location)) set.add(o.location); });
-    return Array.from(set);
-  }, [allOpps]);
-
-  // Default the area to the student's own area (constrain) if it has opportunities.
+  // Default the area to the student's own area (constrain) once profile is known.
   useEffect(() => {
     if (recs.length && area.state === "all" && user.location) {
       const { state, city } = parseLocation(user.location);
-      if (state && locations.some((l) => parseLocation(l).state === state)) {
-        setArea({ state, city: locations.some((l) => l === user.location) ? city : "all" });
-      }
+      if (state) setArea({ state, city: city && citiesForState(state).includes(city) ? city : "all" });
     }
     // eslint-disable-next-line
-  }, [recs, locations]);
+  }, [recs]);
 
   const opps = useMemo(() => {
     if (area.state === "all") return allOpps;
@@ -109,7 +100,7 @@ export default function Dashboard() {
           {/* Area / scope selector: State + City */}
           <div className="nb-card p-3 mb-4">
             <label className="nb-label flex items-center gap-1 mb-1"><MapPin size={14} weight="bold" /> Your area</label>
-            <AreaFilter locations={locations} state={area.state} city={area.city} onChange={setArea} testidPrefix="opp" />
+            <AreaFilter state={area.state} city={area.city} onChange={setArea} testidPrefix="opp" />
             <p className="text-xs text-[#4A4A4A] mt-1">
               {area.state === "all" ? "AI picks across all areas (broadened)." : "AI picks in your area plus remote/nationwide."}
             </p>

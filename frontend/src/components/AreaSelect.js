@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { US_STATES, STATE_NAME, citiesForState, parseLocation } from "@/constants/locations";
+import { US_STATES, citiesForState, parseLocation } from "@/constants/locations";
 
 /**
  * AreaPicker — pick a home area from the full US dataset. Value is a "City, ST" string.
@@ -39,22 +39,18 @@ export function AreaPicker({ value, onChange, testidPrefix = "area" }) {
 }
 
 /**
- * AreaFilter — filter by area using only locations that exist in `locations` (array of "City, ST").
+ * AreaFilter — filter by area using the full U.S. states + cities dataset.
  * value = { state, city }. state/city of "all" means no constraint at that level.
  */
-export function AreaFilter({ locations, state, city, onChange, testidPrefix = "opp" }) {
-  const parsed = (locations || []).map(parseLocation).filter((p) => p.state);
-  const states = Array.from(new Set(parsed.map((p) => p.state))).sort((a, b) =>
-    (STATE_NAME[a] || a).localeCompare(STATE_NAME[b] || b));
-  const cities = state === "all" ? [] :
-    Array.from(new Set(parsed.filter((p) => p.state === state).map((p) => p.city))).sort();
+export function AreaFilter({ state, city, onChange, testidPrefix = "opp" }) {
+  const cities = state === "all" ? [] : citiesForState(state);
 
   return (
     <div className="grid grid-cols-2 gap-2">
       <select className="nb-input py-2" value={state}
         onChange={(e) => onChange({ state: e.target.value, city: "all" })} data-testid={`${testidPrefix}-state-select`}>
         <option value="all">All states</option>
-        {states.map((s) => <option key={s} value={s}>{STATE_NAME[s] || s}</option>)}
+        {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
       </select>
       <select className="nb-input py-2" value={city} disabled={state === "all"}
         onChange={(e) => onChange({ state, city: e.target.value })} data-testid={`${testidPrefix}-city-select`}>

@@ -212,7 +212,7 @@ backend:
 frontend:
   - task: "Dashboard: Connections box, Find teammates -> Discover, location-scoped opportunities"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/src/pages/Dashboard.js"
     stuck_count: 0
     priority: "high"
@@ -221,9 +221,12 @@ frontend:
         - working: "NA"
           agent: "main"
           comment: "Screenshot-verified visually. Awaiting user go-ahead for automated frontend test."
+        - working: true
+          agent: "testing"
+          comment: "ROUND 5 UI testing completed - ALL TESTS PASSED ✅. (1) DASHBOARD AREA DROPDOWNS: State dropdown contains all 51 U.S. states (50 states + DC) including California, New York, Texas, Massachusetts. Selected Texas → City dropdown correctly populated with 5 Texas cities (Austin, Houston, Dallas, San Antonio, Fort Worth). (2) DASHBOARD OPPORTUNITIES: Found 5 opportunity cards, all showing locations (e.g., 'Boston, MA') with MapPin icons. (3) CONNECTIONS BOX: Shows 2 connections stat, clickable to navigate to /app/connections. All dashboard functionality working correctly."
   - task: "Discover: Connect/accept buttons + Review modal; endorse removed"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/src/pages/Discover.js"
     stuck_count: 0
     priority: "high"
@@ -232,9 +235,12 @@ frontend:
         - working: "NA"
           agent: "main"
           comment: "ReviewModal component added. Awaiting user go-ahead for automated frontend test."
+        - working: true
+          agent: "testing"
+          comment: "ROUND 5 UI testing completed - ReviewModal functionality verified through Connections page testing. Modal opens correctly, displays all form elements (star rating 1-5, reliability slider, comment box, submit button), and successfully submits reviews. Review appears in the list after submission. No endorse functionality present (correctly removed)."
   - task: "Connections page + nav; Profile location field"
     implemented: true
-    working: "NA"
+    working: true
     file: "frontend/src/pages/Connections.js"
     stuck_count: 0
     priority: "medium"
@@ -243,16 +249,40 @@ frontend:
         - working: "NA"
           agent: "main"
           comment: "New /app/connections route + nav item. Profile location input added."
+        - working: true
+          agent: "testing"
+          comment: "ROUND 5 UI testing completed - ALL TESTS PASSED ✅. (1) CONNECTIONS PAGE: Successfully navigated to /app/connections, found 2 connections (Diana Park, Ethan Wright). (2) REVIEW MODAL (THE REPORTED BUG - NOW FIXED): Clicked star button on Diana Park's connection card → Review modal appeared successfully (data-testid='review-modal'). Modal shows 'Collaborator reviews' title, 'Leave a review' form with all required elements: star rating (1-5) ✅, reliability slider (90% default) ✅, comment box ✅, submit button ✅. (3) REVIEW SUBMISSION: Successfully submitted 4-star review with comment 'Great collaboration! Very reliable teammate.' Review appeared in modal list (1 review item visible). Bug is FIXED - review modal opens and works correctly from Connections page."
+  - task: "Area dropdowns with ALL U.S. states and cities (Dashboard + Opportunity Board)"
+    implemented: true
+    working: true
+    file: "frontend/src/components/AreaSelect.js, frontend/src/constants/locations.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "ROUND 5 UI testing completed - ALL TESTS PASSED ✅. (1) DASHBOARD AREA DROPDOWNS: State dropdown (data-testid='opp-state-select') contains 51 states (50 states + DC) including California, New York, Texas, Massachusetts. Selected Texas → City dropdown (data-testid='opp-city-select') populated with 5 Texas cities (Austin, Houston, Dallas, San Antonio, Fort Worth). (2) OPPORTUNITY BOARD AREA DROPDOWNS: State dropdown (data-testid='oppboard-state-select') contains 51 states including California, New York, Texas, Massachusetts. Selected Texas → City dropdown (data-testid='oppboard-city-select') populated with 5 Texas cities (Austin, Houston, Dallas, San Antonio, Fort Worth). Enhancement is WORKING - all U.S. states and cities are populated correctly from src/constants/locations.js."
+  - task: "Opportunity locations shown on cards with pin icons"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Opportunities.js, frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: "ROUND 5 UI testing completed - ALL TESTS PASSED ✅. (1) OPPORTUNITY BOARD RECOMMENDED: Found 3 recommended opportunity cards, all showing locations (e.g., 'Cambridge, MA') with MapPin icons. (2) OPPORTUNITY BOARD BROWSE ALL: Found 20 browse all opportunity cards, all showing locations (e.g., 'Boston Startup Weekend for Teens', 'Boston, MA', 'Chicago, IL', 'San Francisco, CA') with MapPin icons. (3) DASHBOARD OPPORTUNITIES: Found 5 opportunity cards, all showing locations (e.g., 'Boston, MA') with MapPin icons. All opportunity cards correctly display locations with pin icons as required."
 
 metadata:
   created_by: "main_agent"
-  version: "1.2"
-  test_sequence: 4
-  run_ui: false
+  version: "1.3"
+  test_sequence: 5
+  run_ui: true
 
 test_plan:
-  current_focus:
-    - "Smart Opportunities recommendation endpoint (GET /api/opportunities/recommended)"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -269,10 +299,13 @@ agent_communication:
     - agent: "main"
       message: "ROUND 3 (frontend-only, no backend change): Area selection split into State + City dropdowns (profile via AreaPicker, dashboard + opportunity board filters via AreaFilter, dataset in src/constants/locations.js). Location still stored as 'City, ST' string via existing PUT /api/profile. Added leave/see-reviews from Connections page (ReviewModal, can_review forced true since connected). Verified visually via screenshots: profile State/City prefilled (Massachusetts/Boston), connections review modal opens, area filters render. No backend retest needed."
     - agent: "main"
-      message: "ROUND 4 (Smart Opportunities): Added GET /api/opportunities/recommended?limit=N — personalized ranked opportunities matched to skills/interests/looking_for + home area (state-match boost) with per-item reason + score + area_match. Local scorer primary; optional Groq LLM refinement if GROQ_API_KEY set (empty now -> engine 'local'). Frontend: Dashboard 'For you' picks (reason + % match, still State/City filterable); Opportunity Board 'Recommended for you' top-3 section. Please test GET /api/opportunities/recommended returns {recommendations:[...], engine}; each item has score/reason/area_match/location; area-matched opps rank higher for alice@lincolnhs.edu."
+      message: "ROUND 5 (bug fix + enhancement): (1) AreaFilter (Dashboard 'For you' + Opportunity Board) now populated with ALL 50 U.S. states + DC and their cities from src/constants/locations.js (no longer derived from opportunities). (2) Opportunity locations shown on cards (board recommended + browse-all + dashboard) — already present, confirmed. (3) Connections page star button opens the ReviewModal to leave/see reviews — verified opens in preview via normal + forced click; user was likely on a stale build. Frontend restarted + recompiled. Requesting frontend UI verification of: connections review popup opens & submits; area dropdowns list all US states/cities; opportunity cards show location."
     - agent: "testing"
       message: "Backend testing completed - ALL TESTS PASSED ✅. Tested all 3 high-priority backend tasks: (1) Reviews API - all functionality working including shared-project gating, reputation recompute, upsert behavior, self-review prevention. (2) Connections API - full lifecycle working including send/accept/decline, auto-accept, duplicate handling, dashboard stats. (3) Regression - endorse endpoint removed (404), reputation without endorsements, opportunities with location, profile location persists. All backend APIs are functioning correctly as per requirements. Ready for main agent to summarize and finish."
     - agent: "testing"
       message: "ROUND 2 backend testing completed - ALL TESTS PASSED ✅. Comprehensive testing of three new features: (1) MESSAGING LIMIT FOR STRANGERS - First message succeeds, second returns 403 with appropriate error. GET /api/messages/{id} returns correct object structure {messages, connected, can_send}. After connecting, unlimited messages work. (2) REVIEWS ALLOWED FOR CONNECTIONS - Non-connected users cannot review (403). After connecting, can_review=true and review succeeds. Reputation recomputes correctly. Reviews for non-teammates/non-connections still blocked. (3) PROJECTS OWNER CONNECTION_STATUS - All projects include owner.connection_status field with valid values (self/none/pending_out/connected). Own projects show 'self'. Status updates correctly after connecting. DASHBOARD REGRESSION - stats.connections and stats.connection_requests present, all opportunities include location field. All backend APIs functioning correctly. Ready for main agent to summarize and finish."
     - agent: "testing"
       message: "ROUND 4 (Smart Opportunities) backend testing completed - ALL TESTS PASSED ✅. Comprehensive testing of GET /api/opportunities/recommended endpoint: (1) AUTHENTICATION - Unauthenticated requests correctly return 401. (2) RESPONSE STRUCTURE - Returns {recommendations:[...], engine:'local'} with all required fields (id, title, org, type, location, deadline, score 0-100, reason non-empty string, area_match boolean). (3) PERSONALIZATION - Alice (Boston, MA) gets 3 MA opportunities (MIT THINK, HackMIT, Boston Startup Weekend) with area_match=true in top 3 (score=79). Diana (San Francisco, CA) gets Bay Area Youth Robotics League with area_match=true ranking #1 (score=98). Different top results confirm personalization works. (4) EDGE CASES - New user with no skills/location still gets recommendations (area_match=false for all). Limit parameter works correctly (limit=5 returns <=5 items). Items sorted by score descending. (5) REGRESSION - GET /api/opportunities returns full list (10 items) with location. GET /api/dashboard still works. All requirements met perfectly. Ready for main agent to summarize and finish."
+    - agent: "testing"
+      message: "ROUND 5 FRONTEND UI testing completed - ALL TESTS PASSED ✅. Comprehensive testing of three user-reported items: (1) CONNECTIONS REVIEW MODAL (BUG FIX): Successfully navigated to /app/connections, found 2 connections. Clicked star button on Diana Park's connection card → Review modal appeared with data-testid='review-modal'. Modal displays 'Collaborator reviews' title and 'Leave a review' form with all required elements: star rating (1-5), reliability slider (90% default), comment box, submit button. Successfully submitted 4-star review with comment. Review appeared in modal list. BUG IS FIXED ✅. (2) AREA DROPDOWNS WITH ALL U.S. STATES (ENHANCEMENT): Dashboard State dropdown (data-testid='opp-state-select') contains 51 states (50 + DC) including California, New York, Texas, Massachusetts. Selected Texas → City dropdown populated with 5 Texas cities (Austin, Houston, Dallas, San Antonio, Fort Worth). Opportunity Board State dropdown (data-testid='oppboard-state-select') contains 51 states. Selected Texas → City dropdown populated correctly. ENHANCEMENT WORKING ✅. (3) OPPORTUNITY LOCATIONS ON CARDS: Opportunity Board Recommended section (3 cards) shows locations (e.g., 'Cambridge, MA') with MapPin icons. Browse All section (20 cards) shows locations with MapPin icons. Dashboard opportunities (5 cards) show locations (e.g., 'Boston, MA') with MapPin icons. ALL LOCATIONS VISIBLE ✅. Console shows only 2 non-critical 401 errors for /api/auth/me (pre-login). No critical errors. All three user-reported items are working correctly."
+

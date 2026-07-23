@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/api";
 import { PageHead } from "@/components/common";
 import { AreaFilter } from "@/components/AreaSelect";
@@ -22,9 +22,6 @@ export default function Opportunities() {
     api.get("/opportunities").then((r) => setOpps(r.data)).catch(() => {});
     api.get("/opportunities/recommended?limit=3").then((r) => setRecs(r.data.recommendations || [])).catch(() => {});
   }, []);
-
-  const locations = useMemo(() =>
-    opps.filter((o) => o.location && !OPEN_TO_ALL.includes(o.location)).map((o) => o.location), [opps]);
 
   const shown = opps.filter((o) => {
     const typeOk = filter === "All" || o.type === filter;
@@ -92,7 +89,7 @@ export default function Opportunities() {
       <div className="flex items-center gap-2 mb-6 max-w-md">
         <MapPin size={18} weight="bold" className="text-[#4A4A4A] shrink-0" />
         <div className="flex-1">
-          <AreaFilter locations={locations} state={area.state} city={area.city} onChange={setArea} testidPrefix="oppboard" />
+          <AreaFilter state={area.state} city={area.city} onChange={setArea} testidPrefix="oppboard" />
         </div>
       </div>
 
